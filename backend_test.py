@@ -92,10 +92,9 @@ class TrainingAPITester:
     # Authentication Tests
     def test_register_admin(self):
         """Test registering an admin user"""
-        timestamp = datetime.now().strftime("%H%M%S")
         user_data = {
-            "username": f"admin_{timestamp}",
-            "email": f"admin_{timestamp}@test.com",
+            "username": "admin",
+            "email": "admin@test.com",
             "password": "admin123",
             "full_name": "Test Admin User",
             "role": "admin"
@@ -117,10 +116,9 @@ class TrainingAPITester:
 
     def test_register_instructor(self):
         """Test registering an instructor user"""
-        timestamp = datetime.now().strftime("%H%M%S")
         user_data = {
-            "username": f"instructor_{timestamp}",
-            "email": f"instructor_{timestamp}@test.com",
+            "username": "instructor",
+            "email": "instructor@test.com",
             "password": "instructor123",
             "full_name": "Test Instructor User",
             "role": "instructor"
@@ -142,10 +140,9 @@ class TrainingAPITester:
 
     def test_register_learner(self):
         """Test registering a learner user"""
-        timestamp = datetime.now().strftime("%H%M%S")
         user_data = {
-            "username": f"learner_{timestamp}",
-            "email": f"learner_{timestamp}@test.com",
+            "username": "learner",
+            "email": "learner@test.com",
             "password": "learner123",
             "full_name": "Test Learner User",
             "role": "learner"
