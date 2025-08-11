@@ -24,21 +24,30 @@ class TrainingAPITester:
         self.created_assessment_id = None
         self.created_user_ids = []
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, files=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, files=None, token=None):
         """Run a single API test"""
         url = f"{self.base_url}/{endpoint}"
         headers = {'Content-Type': 'application/json'} if not files else {}
+        
+        # Add authorization header if token provided
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
         print(f"   URL: {url}")
+        if token:
+            print(f"   Using token: {token[:20]}...")
         
         try:
             if method == 'GET':
                 response = requests.get(url, headers=headers)
             elif method == 'POST':
                 if files:
-                    response = requests.post(url, files=files)
+                    # Remove Content-Type for file uploads
+                    if 'Content-Type' in headers:
+                        del headers['Content-Type']
+                    response = requests.post(url, files=files, headers=headers)
                 else:
                     response = requests.post(url, json=data, headers=headers)
             elif method == 'PUT':
