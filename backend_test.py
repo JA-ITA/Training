@@ -13,6 +13,16 @@ class TrainingAPITester:
         self.created_program_id = None
         self.created_module_id = None
         self.created_unit_id = None
+        
+        # Authentication tokens for different roles
+        self.admin_token = None
+        self.instructor_token = None
+        self.learner_token = None
+        
+        # Created resource IDs for testing
+        self.created_question_ids = []
+        self.created_assessment_id = None
+        self.created_user_ids = []
 
     def run_test(self, name, method, endpoint, expected_status, data=None, files=None):
         """Run a single API test"""
