@@ -491,7 +491,11 @@ class TrainingAPITester:
         return success
 
     def test_create_program(self):
-        """Test creating a program"""
+        """Test creating a program (requires instructor/admin role)"""
+        if not self.instructor_token:
+            print("❌ Skipped - No instructor token available")
+            return False
+            
         program_data = {
             "title": "Hazardous Materials Transportation Safety",
             "description": "Comprehensive training on safe handling and transportation of hazardous materials",
@@ -509,7 +513,8 @@ class TrainingAPITester:
             "POST",
             "api/programs",
             200,
-            data=program_data
+            data=program_data,
+            token=self.instructor_token
         )
         
         if success and 'id' in response:
@@ -519,12 +524,17 @@ class TrainingAPITester:
         return success
 
     def test_get_programs(self):
-        """Test fetching programs list"""
+        """Test fetching programs list (authenticated)"""
+        if not self.learner_token:
+            print("❌ Skipped - No learner token available")
+            return False
+            
         success, response = self.run_test(
             "Get Programs List",
             "GET",
             "api/programs",
-            200
+            200,
+            token=self.learner_token
         )
         
         if success and isinstance(response, list):
@@ -533,23 +543,24 @@ class TrainingAPITester:
         return success
 
     def test_get_program_by_id(self):
-        """Test fetching a specific program"""
-        if not self.created_program_id:
-            print("❌ Skipped - No program ID available")
+        """Test fetching a specific program (authenticated)"""
+        if not self.created_program_id or not self.learner_token:
+            print("❌ Skipped - No program ID or learner token available")
             return False
             
         success, response = self.run_test(
             "Get Program by ID",
             "GET",
             f"api/programs/{self.created_program_id}",
-            200
+            200,
+            token=self.learner_token
         )
         return success
 
     def test_create_module(self):
-        """Test creating a module"""
-        if not self.created_program_id:
-            print("❌ Skipped - No program ID available")
+        """Test creating a module (requires instructor/admin role)"""
+        if not self.created_program_id or not self.instructor_token:
+            print("❌ Skipped - No program ID or instructor token available")
             return False
             
         module_data = {
@@ -564,7 +575,8 @@ class TrainingAPITester:
             "POST",
             "api/modules",
             200,
-            data=module_data
+            data=module_data,
+            token=self.instructor_token
         )
         
         if success and 'id' in response:
@@ -574,16 +586,17 @@ class TrainingAPITester:
         return success
 
     def test_get_program_modules(self):
-        """Test fetching modules for a program"""
-        if not self.created_program_id:
-            print("❌ Skipped - No program ID available")
+        """Test fetching modules for a program (authenticated)"""
+        if not self.created_program_id or not self.learner_token:
+            print("❌ Skipped - No program ID or learner token available")
             return False
             
         success, response = self.run_test(
             "Get Program Modules",
             "GET",
             f"api/programs/{self.created_program_id}/modules",
-            200
+            200,
+            token=self.learner_token
         )
         
         if success and isinstance(response, list):
@@ -592,9 +605,9 @@ class TrainingAPITester:
         return success
 
     def test_create_unit(self):
-        """Test creating a unit"""
-        if not self.created_module_id:
-            print("❌ Skipped - No module ID available")
+        """Test creating a unit (requires instructor/admin role)"""
+        if not self.created_module_id or not self.instructor_token:
+            print("❌ Skipped - No module ID or instructor token available")
             return False
             
         unit_data = {
@@ -612,7 +625,8 @@ class TrainingAPITester:
             "POST",
             "api/units",
             200,
-            data=unit_data
+            data=unit_data,
+            token=self.instructor_token
         )
         
         if success and 'id' in response:
@@ -622,16 +636,17 @@ class TrainingAPITester:
         return success
 
     def test_get_module_units(self):
-        """Test fetching units for a module"""
-        if not self.created_module_id:
-            print("❌ Skipped - No module ID available")
+        """Test fetching units for a module (authenticated)"""
+        if not self.created_module_id or not self.learner_token:
+            print("❌ Skipped - No module ID or learner token available")
             return False
             
         success, response = self.run_test(
             "Get Module Units",
             "GET",
             f"api/modules/{self.created_module_id}/units",
-            200
+            200,
+            token=self.learner_token
         )
         
         if success and isinstance(response, list):
@@ -640,9 +655,9 @@ class TrainingAPITester:
         return success
 
     def test_upload_content(self):
-        """Test uploading content to a unit"""
-        if not self.created_unit_id:
-            print("❌ Skipped - No unit ID available")
+        """Test uploading content to a unit (requires instructor/admin role)"""
+        if not self.created_unit_id or not self.instructor_token:
+            print("❌ Skipped - No unit ID or instructor token available")
             return False
             
         # Create a temporary test file
@@ -659,7 +674,8 @@ class TrainingAPITester:
                     "POST",
                     f"api/units/{self.created_unit_id}/content/upload",
                     200,
-                    files=files
+                    files=files,
+                    token=self.instructor_token
                 )
         finally:
             # Clean up temp file
@@ -668,16 +684,17 @@ class TrainingAPITester:
         return success
 
     def test_get_unit_content(self):
-        """Test fetching content for a unit"""
-        if not self.created_unit_id:
-            print("❌ Skipped - No unit ID available")
+        """Test fetching content for a unit (authenticated)"""
+        if not self.created_unit_id or not self.learner_token:
+            print("❌ Skipped - No unit ID or learner token available")
             return False
             
         success, response = self.run_test(
             "Get Unit Content",
             "GET",
             f"api/units/{self.created_unit_id}/content",
-            200
+            200,
+            token=self.learner_token
         )
         
         if success and isinstance(response, list):
@@ -686,16 +703,17 @@ class TrainingAPITester:
         return success
 
     def test_program_structure(self):
-        """Test fetching complete program structure"""
-        if not self.created_program_id:
-            print("❌ Skipped - No program ID available")
+        """Test fetching complete program structure (authenticated)"""
+        if not self.created_program_id or not self.learner_token:
+            print("❌ Skipped - No program ID or learner token available")
             return False
             
         success, response = self.run_test(
             "Get Program Structure",
             "GET",
             f"api/programs/{self.created_program_id}/structure",
-            200
+            200,
+            token=self.learner_token
         )
         
         if success:
