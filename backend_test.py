@@ -89,6 +89,407 @@ class TrainingAPITester:
         )
         return success
 
+    # Authentication Tests
+    def test_register_admin(self):
+        """Test registering an admin user"""
+        timestamp = datetime.now().strftime("%H%M%S")
+        user_data = {
+            "username": f"admin_{timestamp}",
+            "email": f"admin_{timestamp}@test.com",
+            "password": "admin123",
+            "full_name": "Test Admin User",
+            "role": "admin"
+        }
+        
+        success, response = self.run_test(
+            "Register Admin User",
+            "POST",
+            "api/register",
+            200,
+            data=user_data
+        )
+        
+        if success and 'id' in response:
+            self.created_user_ids.append(response['id'])
+            print(f"   Admin user created: {user_data['username']}")
+        
+        return success
+
+    def test_register_instructor(self):
+        """Test registering an instructor user"""
+        timestamp = datetime.now().strftime("%H%M%S")
+        user_data = {
+            "username": f"instructor_{timestamp}",
+            "email": f"instructor_{timestamp}@test.com",
+            "password": "instructor123",
+            "full_name": "Test Instructor User",
+            "role": "instructor"
+        }
+        
+        success, response = self.run_test(
+            "Register Instructor User",
+            "POST",
+            "api/register",
+            200,
+            data=user_data
+        )
+        
+        if success and 'id' in response:
+            self.created_user_ids.append(response['id'])
+            print(f"   Instructor user created: {user_data['username']}")
+        
+        return success
+
+    def test_register_learner(self):
+        """Test registering a learner user"""
+        timestamp = datetime.now().strftime("%H%M%S")
+        user_data = {
+            "username": f"learner_{timestamp}",
+            "email": f"learner_{timestamp}@test.com",
+            "password": "learner123",
+            "full_name": "Test Learner User",
+            "role": "learner"
+        }
+        
+        success, response = self.run_test(
+            "Register Learner User",
+            "POST",
+            "api/register",
+            200,
+            data=user_data
+        )
+        
+        if success and 'id' in response:
+            self.created_user_ids.append(response['id'])
+            print(f"   Learner user created: {user_data['username']}")
+        
+        return success
+
+    def test_login_admin(self):
+        """Test admin login"""
+        login_data = {
+            "username": "admin",
+            "password": "admin123"
+        }
+        
+        success, response = self.run_test(
+            "Admin Login",
+            "POST",
+            "api/login",
+            200,
+            data=login_data
+        )
+        
+        if success and 'access_token' in response:
+            self.admin_token = response['access_token']
+            print(f"   Admin token obtained")
+        
+        return success
+
+    def test_login_instructor(self):
+        """Test instructor login"""
+        login_data = {
+            "username": "instructor",
+            "password": "instructor123"
+        }
+        
+        success, response = self.run_test(
+            "Instructor Login",
+            "POST",
+            "api/login",
+            200,
+            data=login_data
+        )
+        
+        if success and 'access_token' in response:
+            self.instructor_token = response['access_token']
+            print(f"   Instructor token obtained")
+        
+        return success
+
+    def test_login_learner(self):
+        """Test learner login"""
+        login_data = {
+            "username": "learner",
+            "password": "learner123"
+        }
+        
+        success, response = self.run_test(
+            "Learner Login",
+            "POST",
+            "api/login",
+            200,
+            data=login_data
+        )
+        
+        if success and 'access_token' in response:
+            self.learner_token = response['access_token']
+            print(f"   Learner token obtained")
+        
+        return success
+
+    def test_get_current_user(self):
+        """Test getting current user info"""
+        if not self.admin_token:
+            print("❌ Skipped - No admin token available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Current User Info",
+            "GET",
+            "api/me",
+            200,
+            token=self.admin_token
+        )
+        
+        if success and 'role' in response:
+            print(f"   User role: {response['role']}")
+        
+        return success
+
+    # Question Bank Tests
+    def test_create_multiple_choice_question(self):
+        """Test creating a multiple choice question"""
+        if not self.instructor_token:
+            print("❌ Skipped - No instructor token available")
+            return False
+            
+        question_data = {
+            "question_text": "What is the primary hazard class for gasoline?",
+            "question_type": "multiple_choice",
+            "options": [
+                {"text": "Class 1 - Explosives", "is_correct": False},
+                {"text": "Class 3 - Flammable Liquids", "is_correct": True},
+                {"text": "Class 5 - Oxidizers", "is_correct": False},
+                {"text": "Class 8 - Corrosives", "is_correct": False}
+            ],
+            "points": 2,
+            "explanation": "Gasoline is classified as Class 3 - Flammable Liquids according to DOT regulations."
+        }
+        
+        success, response = self.run_test(
+            "Create Multiple Choice Question",
+            "POST",
+            "api/questions",
+            200,
+            data=question_data,
+            token=self.instructor_token
+        )
+        
+        if success and 'id' in response:
+            self.created_question_ids.append(response['id'])
+            print(f"   Multiple choice question created")
+        
+        return success
+
+    def test_create_true_false_question(self):
+        """Test creating a true/false question"""
+        if not self.instructor_token:
+            print("❌ Skipped - No instructor token available")
+            return False
+            
+        question_data = {
+            "question_text": "All hazardous materials must be labeled with UN numbers.",
+            "question_type": "true_false",
+            "correct_answer": "true",
+            "points": 1,
+            "explanation": "Yes, all hazardous materials must display proper UN identification numbers for transportation."
+        }
+        
+        success, response = self.run_test(
+            "Create True/False Question",
+            "POST",
+            "api/questions",
+            200,
+            data=question_data,
+            token=self.instructor_token
+        )
+        
+        if success and 'id' in response:
+            self.created_question_ids.append(response['id'])
+            print(f"   True/false question created")
+        
+        return success
+
+    def test_create_essay_question(self):
+        """Test creating an essay question"""
+        if not self.instructor_token:
+            print("❌ Skipped - No instructor token available")
+            return False
+            
+        question_data = {
+            "question_text": "Describe the proper procedure for handling a hazardous material spill.",
+            "question_type": "essay",
+            "points": 5,
+            "explanation": "A comprehensive answer should include containment, notification, cleanup, and documentation procedures."
+        }
+        
+        success, response = self.run_test(
+            "Create Essay Question",
+            "POST",
+            "api/questions",
+            200,
+            data=question_data,
+            token=self.instructor_token
+        )
+        
+        if success and 'id' in response:
+            self.created_question_ids.append(response['id'])
+            print(f"   Essay question created")
+        
+        return success
+
+    def test_get_questions(self):
+        """Test fetching questions (instructor access)"""
+        if not self.instructor_token:
+            print("❌ Skipped - No instructor token available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Questions List",
+            "GET",
+            "api/questions",
+            200,
+            token=self.instructor_token
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} questions")
+        
+        return success
+
+    def test_learner_cannot_access_questions(self):
+        """Test that learners cannot access question management"""
+        if not self.learner_token:
+            print("❌ Skipped - No learner token available")
+            return False
+            
+        success, response = self.run_test(
+            "Learner Access Questions (Should Fail)",
+            "GET",
+            "api/questions",
+            403,  # Expecting forbidden
+            token=self.learner_token
+        )
+        
+        return success
+
+    # Assessment Tests
+    def test_create_assessment(self):
+        """Test creating an assessment"""
+        if not self.instructor_token or len(self.created_question_ids) < 2:
+            print("❌ Skipped - No instructor token or insufficient questions")
+            return False
+            
+        assessment_data = {
+            "title": "Hazmat Basic Safety Quiz",
+            "description": "Basic assessment covering hazardous materials safety fundamentals",
+            "question_ids": self.created_question_ids[:2],  # Use first 2 questions
+            "pass_mark": 70,
+            "max_attempts": 3,
+            "time_limit": 30,
+            "randomize_questions": False
+        }
+        
+        success, response = self.run_test(
+            "Create Assessment",
+            "POST",
+            "api/assessments",
+            200,
+            data=assessment_data,
+            token=self.instructor_token
+        )
+        
+        if success and 'id' in response:
+            self.created_assessment_id = response['id']
+            print(f"   Assessment created with {len(assessment_data['question_ids'])} questions")
+        
+        return success
+
+    def test_get_assessments(self):
+        """Test fetching assessments list"""
+        if not self.learner_token:
+            print("❌ Skipped - No learner token available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Assessments List",
+            "GET",
+            "api/assessments",
+            200,
+            token=self.learner_token
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} assessments")
+        
+        return success
+
+    def test_get_assessment_questions(self):
+        """Test fetching questions for an assessment (learner view)"""
+        if not self.learner_token or not self.created_assessment_id:
+            print("❌ Skipped - No learner token or assessment ID")
+            return False
+            
+        success, response = self.run_test(
+            "Get Assessment Questions (Learner View)",
+            "GET",
+            f"api/assessments/{self.created_assessment_id}/questions",
+            200,
+            token=self.learner_token
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Retrieved {len(response)} questions for assessment")
+            # Check that correct answers are hidden for learners
+            for question in response:
+                if question.get('question_type') == 'multiple_choice':
+                    correct_options = [opt for opt in question.get('options', []) if opt.get('is_correct')]
+                    if len(correct_options) == 0:
+                        print(f"   ✅ Correct answers properly hidden for learners")
+                    else:
+                        print(f"   ⚠️  Warning: Correct answers may be visible to learners")
+        
+        return success
+
+    def test_submit_assessment(self):
+        """Test submitting an assessment"""
+        if not self.learner_token or not self.created_assessment_id or len(self.created_question_ids) < 2:
+            print("❌ Skipped - Missing requirements for assessment submission")
+            return False
+            
+        # Create sample answers
+        submission_data = {
+            "assessment_id": self.created_assessment_id,
+            "answers": [
+                {
+                    "question_id": self.created_question_ids[0],
+                    "selected_option_id": "dummy_option_id",  # This would be a real option ID in practice
+                    "answer_text": None
+                },
+                {
+                    "question_id": self.created_question_ids[1],
+                    "selected_option_id": None,
+                    "answer_text": "true"  # For true/false question
+                }
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Submit Assessment",
+            "POST",
+            f"api/assessments/{self.created_assessment_id}/submit",
+            200,
+            data=submission_data,
+            token=self.learner_token
+        )
+        
+        if success and 'percentage' in response:
+            print(f"   Assessment submitted - Score: {response['percentage']:.1f}%")
+            print(f"   Passed: {response.get('is_passed', False)}")
+        
+        return success
+
     def test_create_program(self):
         """Test creating a program"""
         program_data = {
