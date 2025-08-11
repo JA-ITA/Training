@@ -727,15 +727,40 @@ class TrainingAPITester:
         return success
 
 def main():
-    print("🚀 Starting Training Management API Tests")
-    print("=" * 50)
+    print("🚀 Starting Comprehensive Training Management API Tests")
+    print("=" * 60)
     
     # Setup
     tester = TrainingAPITester()
     
     # Run all tests in sequence
     tests = [
+        # Basic health check
         tester.test_health_check,
+        
+        # Authentication tests
+        tester.test_register_admin,
+        tester.test_register_instructor, 
+        tester.test_register_learner,
+        tester.test_login_admin,
+        tester.test_login_instructor,
+        tester.test_login_learner,
+        tester.test_get_current_user,
+        
+        # Question bank tests
+        tester.test_create_multiple_choice_question,
+        tester.test_create_true_false_question,
+        tester.test_create_essay_question,
+        tester.test_get_questions,
+        tester.test_learner_cannot_access_questions,
+        
+        # Assessment tests
+        tester.test_create_assessment,
+        tester.test_get_assessments,
+        tester.test_get_assessment_questions,
+        tester.test_submit_assessment,
+        
+        # Program management tests (with authentication)
         tester.test_create_program,
         tester.test_get_programs,
         tester.test_get_program_by_id,
@@ -748,18 +773,37 @@ def main():
         tester.test_program_structure
     ]
     
+    print(f"\n📋 Running {len(tests)} comprehensive tests...")
+    
     for test in tests:
         test()
     
     # Print final results
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"📊 Final Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
         print("🎉 All tests passed! API is working correctly.")
+        print("\n✅ Authentication system working")
+        print("✅ Role-based access control working")
+        print("✅ Question bank management working")
+        print("✅ Assessment system working")
+        print("✅ Program management working")
         return 0
     else:
-        print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed.")
+        failed_tests = tester.tests_run - tester.tests_passed
+        print(f"⚠️  {failed_tests} tests failed.")
+        print("\n🔧 Issues found that need attention:")
+        if tester.admin_token is None:
+            print("   - Admin authentication may be failing")
+        if tester.instructor_token is None:
+            print("   - Instructor authentication may be failing")
+        if tester.learner_token is None:
+            print("   - Learner authentication may be failing")
+        if len(tester.created_question_ids) == 0:
+            print("   - Question creation may be failing")
+        if tester.created_assessment_id is None:
+            print("   - Assessment creation may be failing")
         return 1
 
 if __name__ == "__main__":
