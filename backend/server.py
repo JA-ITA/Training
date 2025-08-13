@@ -72,6 +72,22 @@ assessment_attempts_collection = db.assessment_attempts
 UPLOAD_DIR = Path("/app/uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# Profile photos directory
+PROFILE_PHOTOS_DIR = UPLOAD_DIR / "profile_photos"
+PROFILE_PHOTOS_DIR.mkdir(exist_ok=True)
+
+# Available roles in the system
+AVAILABLE_ROLES = [
+    "administrator",
+    "administrative_assistant", 
+    "lecturer",
+    "learner",
+    "administrator_supervisor"
+]
+
+# User status options
+USER_STATUS = ["pending", "approved", "suspended", "deleted"]
+
 # Authentication Models
 class UserCreate(BaseModel):
     username: str
