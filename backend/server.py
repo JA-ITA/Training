@@ -1096,7 +1096,7 @@ async def delete_unit(unit_id: str, current_user: User = Depends(require_role(["
 
 # Content endpoints (keep existing functionality)
 @app.post("/api/units/{unit_id}/content/upload")
-async def upload_content(unit_id: str, file: UploadFile = File(...), current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def upload_content(unit_id: str, file: UploadFile = File(...), current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     # Verify unit exists
     unit = units_collection.find_one({"id": unit_id})
     if not unit:
