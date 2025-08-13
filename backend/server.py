@@ -1035,7 +1035,7 @@ async def update_module(module_id: str, module_data: dict, current_user: User = 
     return Module(**updated_module)
 
 @app.delete("/api/modules/{module_id}")
-async def delete_module(module_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def delete_module(module_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     # Delete related units
     units_collection.delete_many({"module_id": module_id})
     
