@@ -571,22 +571,30 @@ async def register_user(user_data: UserCreate):
         raise HTTPException(status_code=400, detail="Username or email already registered")
     
     # Validate role
-    if user_data.role not in ["admin", "instructor", "learner"]:
-        raise HTTPException(status_code=400, detail="Invalid role")
+    if user_data.role not in AVAILABLE_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Available roles: {', '.join(AVAILABLE_ROLES)}")
     
     user_id = generate_id()
     timestamp = get_current_timestamp()
+    
+    # Auto-approve learners, others need admin approval
+    status = "approved" if user_data.role == "learner" else "pending"
     
     user_doc = {
         "id": user_id,
         "username": user_data.username,
         "email": user_data.email,
         "full_name": user_data.full_name,
-        "role": user_data.role,
+        "role": "learner" if status == "pending" else user_data.role,  # Set to learner until approved
+        "requested_role": user_data.role if status == "pending" else None,
+        "status": status,
         "password_hash": get_password_hash(user_data.password),
         "is_active": True,
+        "profile_photo": None,
         "created_at": timestamp,
-        "updated_at": timestamp
+        "updated_at": timestamp,
+        "approved_by": None,
+        "approved_at": timestamp if status == "approved" else None
     }
     
     users_collection.insert_one(user_doc)
