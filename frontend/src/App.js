@@ -756,6 +756,200 @@ function MainApp() {
     }
   };
 
+  // Enhanced Content Viewer Component
+  const ContentViewer = ({ content, onClose }) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const handleProgressUpdate = (progressData) => {
+      updateContentProgress(content.id, progressData);
+    };
+
+    const handleVideoProgress = (e) => {
+      const video = e.target;
+      const progress = (video.currentTime / video.duration) * 100;
+      
+      setCurrentTime(video.currentTime);
+      
+      // Update progress every 10 seconds or on significant progress changes
+      if (Math.floor(video.currentTime) % 10 === 0) {
+        handleProgressUpdate({
+          progress_percentage: Math.round(progress),
+          last_position: video.currentTime,
+          time_spent: video.currentTime,
+          completed: progress >= 95
+        });
+      }
+    };
+
+    const handleVideoEnd = () => {
+      handleProgressUpdate({
+        progress_percentage: 100,
+        last_position: duration,
+        time_spent: duration,
+        completed: true
+      });
+      setIsPlaying(false);
+    };
+
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const contentUrl = `${API_BASE_URL}/api/content/${content.id}/stream`;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className={`bg-white rounded-lg max-w-6xl w-full mx-4 ${isFullscreen ? 'h-full' : 'max-h-[90vh]'} overflow-hidden`}>
+          <div className="p-4 border-b flex items-center justify-between">
+            <h3 className="text-lg font-semibold">{content.title}</h3>
+            <div className="flex items-center gap-2">
+              {content.content_type === 'video' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                >
+                  {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={onClose}>
+                ×
+              </Button>
+            </div>
+          </div>
+          
+          <div className="p-4 flex-1 overflow-auto">
+            {content.content_type === 'video' && (
+              <div className="relative">
+                <video
+                  src={contentUrl}
+                  className="w-full rounded-lg"
+                  controls
+                  onTimeUpdate={handleVideoProgress}
+                  onEnded={handleVideoEnd}
+                  onLoadedMetadata={(e) => setDuration(e.target.duration)}
+                >
+                  Your browser does not support the video tag.
+                </video>
+                
+                {/* Progress indicator */}
+                <div className="mt-4">
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progress: {contentProgress[content.id]?.progress_percentage || 0}%</span>
+                    <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+                  </div>
+                  <Progress 
+                    value={contentProgress[content.id]?.progress_percentage || 0} 
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+
+            {content.content_type === 'audio' && (
+              <div className="text-center py-8">
+                <Music className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                <audio
+                  src={contentUrl}
+                  className="w-full"
+                  controls
+                  onTimeUpdate={handleVideoProgress}
+                  onEnded={handleVideoEnd}
+                  onLoadedMetadata={(e) => setDuration(e.target.duration)}
+                >
+                  Your browser does not support the audio tag.
+                </audio>
+                
+                <div className="mt-4">
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progress: {contentProgress[content.id]?.progress_percentage || 0}%</span>
+                    <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+                  </div>
+                  <Progress 
+                    value={contentProgress[content.id]?.progress_percentage || 0} 
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+
+            {content.content_type === 'pdf' && (
+              <div className="text-center py-8">
+                <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600 mb-4">PDF Viewer</p>
+                <iframe
+                  src={contentUrl}
+                  className="w-full h-96 border rounded-lg"
+                  title={content.title}
+                />
+                <Button
+                  className="mt-4"
+                  onClick={() => {
+                    handleProgressUpdate({
+                      progress_percentage: 100,
+                      completed: true,
+                      time_spent: 300 // Assume 5 minutes for PDF
+                    });
+                  }}
+                >
+                  Mark as Complete
+                </Button>
+              </div>
+            )}
+
+            {content.content_type === 'image' && (
+              <div className="text-center">
+                <img
+                  src={contentUrl}
+                  alt={content.title}
+                  className="max-w-full h-auto rounded-lg mx-auto"
+                  onLoad={() => {
+                    handleProgressUpdate({
+                      progress_percentage: 100,
+                      completed: true,
+                      time_spent: 30 // Assume 30 seconds for image
+                    });
+                  }}
+                />
+              </div>
+            )}
+
+            {(!['video', 'audio', 'pdf', 'image'].includes(content.content_type)) && (
+              <div className="text-center py-8">
+                <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600 mb-4">Document: {content.title}</p>
+                <Button
+                  onClick={() => window.open(contentUrl, '_blank')}
+                  className="mr-2"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleProgressUpdate({
+                      progress_percentage: 100,
+                      completed: true,
+                      time_spent: 180 // Assume 3 minutes for document
+                    });
+                  }}
+                >
+                  Mark as Complete
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Dashboard View
   const DashboardView = () => (
     <div className="space-y-6">
