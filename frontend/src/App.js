@@ -431,6 +431,9 @@ function MainApp() {
       fetchQuestions();
       fetchAssessments();
     }
+    if (user) {
+      fetchCertificates();
+    }
   }, [user]);
 
   const fetchPrograms = async () => {
