@@ -1225,7 +1225,7 @@ async def get_question(question_id: str, current_user: User = Depends(require_ro
     return Question(**question)
 
 @app.put("/api/questions/{question_id}", response_model=Question)
-async def update_question(question_id: str, question: QuestionCreate, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def update_question(question_id: str, question: QuestionCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     timestamp = get_current_timestamp()
     
     # Generate IDs for options
