@@ -255,10 +255,10 @@ class TrainingAPITester:
             "question_text": "What is the primary hazard class for gasoline?",
             "question_type": "multiple_choice",
             "options": [
-                {"text": "Class 1 - Explosives", "is_correct": False},
-                {"text": "Class 3 - Flammable Liquids", "is_correct": True},
-                {"text": "Class 5 - Oxidizers", "is_correct": False},
-                {"text": "Class 8 - Corrosives", "is_correct": False}
+                {"id": "opt1", "text": "Class 1 - Explosives", "is_correct": False},
+                {"id": "opt2", "text": "Class 3 - Flammable Liquids", "is_correct": True},
+                {"id": "opt3", "text": "Class 5 - Oxidizers", "is_correct": False},
+                {"id": "opt4", "text": "Class 8 - Corrosives", "is_correct": False}
             ],
             "points": 2,
             "explanation": "Gasoline is classified as Class 3 - Flammable Liquids according to DOT regulations."
