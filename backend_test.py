@@ -723,6 +723,242 @@ class TrainingAPITester:
         
         return success
 
+        
+        return success
+
+    # Enrollment Tests
+    def test_create_enrollment(self):
+        """Test creating an enrollment (admin only)"""
+        if not self.admin_token or not self.created_program_id or len(self.created_user_ids) < 3:
+            print("❌ Skipped - Missing admin token, program ID, or user IDs")
+            return False
+            
+        # Enroll the learner in the program
+        learner_id = self.created_user_ids[2]  # Learner is the 3rd user created
+        enrollment_data = {
+            "user_id": learner_id,
+            "program_id": self.created_program_id
+        }
+        
+        success, response = self.run_test(
+            "Create Enrollment",
+            "POST",
+            "api/enrollments",
+            200,
+            data=enrollment_data,
+            token=self.admin_token
+        )
+        
+        if success and 'id' in response:
+            print(f"   Learner enrolled in program")
+        
+        return success
+
+    def test_get_enrollments(self):
+        """Test fetching all enrollments (admin only)"""
+        if not self.admin_token:
+            print("❌ Skipped - No admin token available")
+            return False
+            
+        success, response = self.run_test(
+            "Get All Enrollments",
+            "GET",
+            "api/enrollments",
+            200,
+            token=self.admin_token
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} enrollments")
+        
+        return success
+
+    def test_get_user_enrollments(self):
+        """Test fetching user's own enrollments"""
+        if not self.learner_token or len(self.created_user_ids) < 3:
+            print("❌ Skipped - No learner token or user IDs")
+            return False
+            
+        learner_id = self.created_user_ids[2]  # Learner is the 3rd user created
+        success, response = self.run_test(
+            "Get User Enrollments",
+            "GET",
+            f"api/users/{learner_id}/enrollments",
+            200,
+            token=self.learner_token
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} enrollments for learner")
+        
+        return success
+
+    def test_get_program_enrollments(self):
+        """Test fetching enrollments for a program (instructor access)"""
+        if not self.instructor_token or not self.created_program_id:
+            print("❌ Skipped - No instructor token or program ID")
+            return False
+            
+        success, response = self.run_test(
+            "Get Program Enrollments",
+            "GET",
+            f"api/programs/{self.created_program_id}/enrollments",
+            200,
+            token=self.instructor_token
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} enrollments for program")
+        
+        return success
+
+    # Certificate Tests
+    def test_get_certificates(self):
+        """Test fetching certificates (user can see their own)"""
+        if not self.learner_token:
+            print("❌ Skipped - No learner token available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Certificates",
+            "GET",
+            "api/certificates",
+            200,
+            token=self.learner_token
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} certificates")
+        
+        return success
+
+    def test_certificate_verification(self):
+        """Test certificate verification system"""
+        # Test with invalid verification code
+        verification_data = {
+            "verification_code": "INVALID123"
+        }
+        
+        success, response = self.run_test(
+            "Verify Invalid Certificate",
+            "POST",
+            "api/certificates/verify",
+            200,
+            data=verification_data
+        )
+        
+        if success and 'valid' in response:
+            if not response['valid']:
+                print(f"   ✅ Invalid certificate correctly rejected")
+            else:
+                print(f"   ⚠️  Warning: Invalid certificate was accepted")
+        
+        return success
+
+    def test_manual_certificate_generation(self):
+        """Test manual certificate generation (admin/instructor only)"""
+        if not self.instructor_token or not self.created_program_id or len(self.created_user_ids) < 3:
+            print("❌ Skipped - Missing instructor token, program ID, or user IDs")
+            return False
+            
+        learner_id = self.created_user_ids[2]  # Learner is the 3rd user created
+        
+        success, response = self.run_test(
+            "Manual Certificate Generation",
+            "POST",
+            f"api/programs/{self.created_program_id}/generate-certificate?user_id={learner_id}",
+            400,  # Expecting 400 because user hasn't completed requirements
+            token=self.instructor_token
+        )
+        
+        if success:
+            print(f"   ✅ Correctly prevented certificate generation for incomplete program")
+        
+        return success
+
+    # Progress Tracking Tests
+    def test_program_progress(self):
+        """Test getting program progress"""
+        if not self.learner_token or not self.created_program_id:
+            print("❌ Skipped - No learner token or program ID")
+            return False
+            
+        success, response = self.run_test(
+            "Get Program Progress",
+            "GET",
+            f"api/programs/{self.created_program_id}/progress",
+            200,
+            token=self.learner_token
+        )
+        
+        if success and 'program_id' in response:
+            modules_count = len(response.get('modules', []))
+            print(f"   Progress tracked for {modules_count} modules")
+        
+        return success
+
+    # Role-based Access Control Tests
+    def test_learner_cannot_create_program(self):
+        """Test that learners cannot create programs"""
+        if not self.learner_token:
+            print("❌ Skipped - No learner token available")
+            return False
+            
+        program_data = {
+            "title": "Unauthorized Program",
+            "description": "This should fail",
+            "learning_objectives": ["Should not work"],
+            "expiry_duration": 12,
+            "renewal_requirements": "None"
+        }
+        
+        success, response = self.run_test(
+            "Learner Create Program (Should Fail)",
+            "POST",
+            "api/programs",
+            403,  # Expecting forbidden
+            data=program_data,
+            token=self.learner_token
+        )
+        
+        return success
+
+    def test_learner_cannot_create_questions(self):
+        """Test that learners cannot create questions"""
+        if not self.learner_token:
+            print("❌ Skipped - No learner token available")
+            return False
+            
+        question_data = {
+            "question_text": "Unauthorized question?",
+            "question_type": "true_false",
+            "correct_answer": "false",
+            "points": 1
+        }
+        
+        success, response = self.run_test(
+            "Learner Create Question (Should Fail)",
+            "POST",
+            "api/questions",
+            403,  # Expecting forbidden
+            data=question_data,
+            token=self.learner_token
+        )
+        
+        return success
+
+    def test_unauthenticated_access_denied(self):
+        """Test that unauthenticated requests are denied"""
+        success, response = self.run_test(
+            "Unauthenticated Access (Should Fail)",
+            "GET",
+            "api/me",
+            401,  # Expecting unauthorized
+            token=None
+        )
+        
+        return success
+
 def main():
     print("🚀 Starting Comprehensive Training Management API Tests")
     print("=" * 60)
