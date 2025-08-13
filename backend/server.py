@@ -1264,7 +1264,7 @@ async def delete_question(question_id: str, current_user: User = Depends(require
 
 # Assessment endpoints
 @app.post("/api/assessments", response_model=Assessment)
-async def create_assessment(assessment: AssessmentCreate, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def create_assessment(assessment: AssessmentCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     assessment_id = generate_id()
     timestamp = get_current_timestamp()
     
