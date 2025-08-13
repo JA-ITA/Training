@@ -1087,7 +1087,7 @@ async def update_unit(unit_id: str, unit_data: dict, current_user: User = Depend
     return Unit(**updated_unit)
 
 @app.delete("/api/units/{unit_id}")
-async def delete_unit(unit_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def delete_unit(unit_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     result = units_collection.delete_one({"id": unit_id})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Unit not found")
