@@ -233,6 +233,24 @@ class Enrollment(BaseModel):
     completed_at: Optional[str] = None
     status: str = "active"  # active, completed, suspended
 
+# Certificate Models
+class Certificate(BaseModel):
+    id: str
+    user_id: str
+    program_id: str
+    enrollment_id: str
+    user_name: str
+    program_title: str
+    issued_date: str
+    expiry_date: Optional[str] = None
+    certificate_number: str
+    verification_code: str
+    is_valid: bool = True
+    certificate_file_path: Optional[str] = None
+
+class CertificateVerification(BaseModel):
+    verification_code: str
+
 # Utility functions
 def generate_id():
     return str(uuid.uuid4())
