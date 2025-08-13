@@ -1052,7 +1052,26 @@ async def submit_assessment(assessment_id: str, submission: AssessmentSubmission
     
     assessment_attempts_collection.insert_one(attempt_doc)
     
-    return {
+    # Check if this completion triggers program completion and certificate generation
+    certificate_id = None
+    if is_passed and assessment.get("program_id"):
+        # Find user's enrollment in this program
+        enrollment = enrollments_collection.find_one({
+            "user_id": current_user.id,
+            "program_id": assessment["program_id"],
+            "status": "active"
+        })
+        
+        if enrollment:
+            # Check if program is now completed
+            if check_program_completion(current_user.id, assessment["program_id"]):
+                certificate_id = auto_generate_certificate(
+                    current_user.id,
+                    assessment["program_id"],
+                    enrollment["id"]
+                )
+    
+    response_data = {
         "attempt_id": attempt_id,
         "percentage": percentage,
         "is_passed": is_passed,
@@ -1060,6 +1079,12 @@ async def submit_assessment(assessment_id: str, submission: AssessmentSubmission
         "earned_points": earned_points,
         "results": results
     }
+    
+    if certificate_id:
+        response_data["certificate_generated"] = True
+        response_data["certificate_id"] = certificate_id
+    
+    return response_data
 
 # Enrollment endpoints
 @app.post("/api/enrollments", response_model=Enrollment)
