@@ -997,11 +997,11 @@ function MainApp() {
 
         <Card className="border-l-4 border-l-purple-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">My Role</CardTitle>
+            <CardTitle className="text-lg">My Certificates</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600 capitalize">{user.role}</div>
-            <p className="text-sm text-gray-600">Access level</p>
+            <div className="text-3xl font-bold text-purple-600">{certificates.length}</div>
+            <p className="text-sm text-gray-600">Earned certificates</p>
           </CardContent>
         </Card>
       </div>
