@@ -928,7 +928,7 @@ async def remove_user_from_program(program_id: str, user_id: str, current_user: 
 
 # Programs endpoints (updated with authentication)
 @app.post("/api/programs", response_model=Program)
-async def create_program(program: ProgramCreate, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def create_program(program: ProgramCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     program_id = generate_id()
     timestamp = get_current_timestamp()
     
