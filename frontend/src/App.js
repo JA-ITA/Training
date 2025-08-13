@@ -668,6 +668,13 @@ function MainApp() {
       
       const response = await axios.post(`${API_BASE_URL}/api/assessments/${selectedAssessment.id}/submit`, submission);
       setAssessmentResults(response.data);
+      
+      // If certificate was generated, fetch certificates
+      if (response.data.certificate_generated) {
+        setSuccess('Congratulations! You have earned a certificate for completing this program!');
+        fetchCertificates();
+      }
+      
       setCurrentPage('assessment_results');
     } catch (err) {
       setError('Failed to submit assessment');
