@@ -1213,7 +1213,7 @@ async def create_question(question: QuestionCreate, current_user: User = Depends
     return Question(**question_doc)
 
 @app.get("/api/questions", response_model=List[Question])
-async def get_questions(current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def get_questions(current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     questions = list(questions_collection.find({}, {"_id": 0}))
     return [Question(**question) for question in questions]
 
