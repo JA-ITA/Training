@@ -1075,7 +1075,7 @@ async def get_module_units(module_id: str, current_user: User = Depends(get_curr
     return [Unit(**unit) for unit in units]
 
 @app.put("/api/units/{unit_id}", response_model=Unit)
-async def update_unit(unit_id: str, unit_data: dict, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def update_unit(unit_id: str, unit_data: dict, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     timestamp = get_current_timestamp()
     update_doc = {**unit_data, "updated_at": timestamp}
     
