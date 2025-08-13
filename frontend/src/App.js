@@ -2234,6 +2234,7 @@ function MainApp() {
         {currentPage === 'programs' && <ProgramsView />}
         {currentPage === 'questions' && <QuestionsView />}
         {currentPage === 'assessments' && <AssessmentsView />}
+        {currentPage === 'certificates' && <CertificatesView />}
         {currentPage === 'take_assessment' && <AssessmentTakingView />}
         {currentPage === 'assessment_results' && <AssessmentResultsView />}
       </main>
