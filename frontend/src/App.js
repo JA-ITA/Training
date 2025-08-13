@@ -1093,6 +1093,14 @@ function MainApp() {
                     <ClipboardList className="h-4 w-4 mr-2" />
                     Take Assessment
                   </Button>
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => setCurrentPage('certificates')}
+                  >
+                    <Award className="h-4 w-4 mr-2" />
+                    My Certificates
+                  </Button>
                 </>
               )}
               {user.role === 'admin' && (
