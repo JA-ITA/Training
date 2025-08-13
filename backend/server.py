@@ -644,9 +644,287 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
     return current_user
 
 @app.get("/api/users", response_model=List[User])
-async def get_users(current_user: User = Depends(require_role(["admin"]))):
+async def get_users(current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
     users = list(users_collection.find({}, {"_id": 0, "password_hash": 0}))
     return [User(**user) for user in users]
+
+# Enhanced User Management APIs
+@app.get("/api/users/pending", response_model=List[User])
+async def get_pending_users(current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Get users pending approval"""
+    users = list(users_collection.find({"status": "pending"}, {"_id": 0, "password_hash": 0}))
+    return [User(**user) for user in users]
+
+@app.post("/api/users", response_model=User)
+async def admin_create_user(user_data: AdminUserCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Admin creates a user directly (no approval needed)"""
+    # Check if user already exists
+    existing_user = users_collection.find_one({"$or": [{"username": user_data.username}, {"email": user_data.email}]})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username or email already registered")
+    
+    # Validate role
+    if user_data.role not in AVAILABLE_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Available roles: {', '.join(AVAILABLE_ROLES)}")
+    
+    user_id = generate_id()
+    timestamp = get_current_timestamp()
+    
+    user_doc = {
+        "id": user_id,
+        "username": user_data.username,
+        "email": user_data.email,
+        "full_name": user_data.full_name,
+        "role": user_data.role,
+        "requested_role": None,
+        "status": user_data.status,
+        "password_hash": get_password_hash(user_data.password),
+        "is_active": True,
+        "profile_photo": None,
+        "created_at": timestamp,
+        "updated_at": timestamp,
+        "approved_by": current_user.id,
+        "approved_at": timestamp
+    }
+    
+    users_collection.insert_one(user_doc)
+    user_response = user_doc.copy()
+    del user_response["password_hash"]
+    return User(**user_response)
+
+@app.put("/api/users/{user_id}/approve", response_model=User)
+async def approve_user(user_id: str, approval: UserApproval, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Approve a user and assign role"""
+    user = users_collection.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if approval.approved_role not in AVAILABLE_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Available roles: {', '.join(AVAILABLE_ROLES)}")
+    
+    timestamp = get_current_timestamp()
+    
+    update_doc = {
+        "role": approval.approved_role,
+        "status": approval.status,
+        "approved_by": current_user.id,
+        "approved_at": timestamp,
+        "updated_at": timestamp
+    }
+    
+    users_collection.update_one({"id": user_id}, {"$set": update_doc})
+    
+    updated_user = users_collection.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    return User(**updated_user)
+
+@app.put("/api/users/{user_id}", response_model=User)
+async def update_user(user_id: str, user_update: UserUpdate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Update user information"""
+    user = users_collection.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    timestamp = get_current_timestamp()
+    update_doc = {"updated_at": timestamp}
+    
+    if user_update.full_name is not None:
+        update_doc["full_name"] = user_update.full_name
+    if user_update.email is not None:
+        # Check if email is already taken by another user
+        existing_user = users_collection.find_one({"email": user_update.email, "id": {"$ne": user_id}})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        update_doc["email"] = user_update.email
+    if user_update.role is not None:
+        if user_update.role not in AVAILABLE_ROLES:
+            raise HTTPException(status_code=400, detail=f"Invalid role. Available roles: {', '.join(AVAILABLE_ROLES)}")
+        update_doc["role"] = user_update.role
+    if user_update.status is not None:
+        if user_update.status not in USER_STATUS:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Available statuses: {', '.join(USER_STATUS)}")
+        update_doc["status"] = user_update.status
+    
+    users_collection.update_one({"id": user_id}, {"$set": update_doc})
+    
+    updated_user = users_collection.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    return User(**updated_user)
+
+@app.put("/api/users/{user_id}/suspend")
+async def suspend_user(user_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Suspend a user"""
+    result = users_collection.update_one(
+        {"id": user_id}, 
+        {"$set": {"status": "suspended", "updated_at": get_current_timestamp()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User suspended successfully"}
+
+@app.put("/api/users/{user_id}/restore")
+async def restore_user(user_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Restore a suspended user"""
+    result = users_collection.update_one(
+        {"id": user_id}, 
+        {"$set": {"status": "approved", "updated_at": get_current_timestamp()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User restored successfully"}
+
+@app.delete("/api/users/{user_id}")
+async def delete_user(user_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Soft delete a user (mark as deleted)"""
+    result = users_collection.update_one(
+        {"id": user_id}, 
+        {"$set": {"status": "deleted", "is_active": False, "updated_at": get_current_timestamp()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User deleted successfully"}
+
+# User Profile Management APIs
+@app.post("/api/users/{user_id}/profile-photo")
+async def upload_profile_photo(user_id: str, file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)):
+    """Upload profile photo"""
+    # Users can only update their own profile or admin can update any
+    if current_user.id != user_id and current_user.role not in ["administrator", "administrator_supervisor"]:
+        raise HTTPException(status_code=403, detail="Not authorized to update this profile")
+    
+    # Validate file type
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Generate unique filename
+    file_extension = Path(file.filename).suffix
+    photo_filename = f"{user_id}_{generate_id()}{file_extension}"
+    photo_path = PROFILE_PHOTOS_DIR / photo_filename
+    
+    # Save file
+    with open(photo_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Update user document
+    photo_url = f"/api/users/{user_id}/profile-photo/{photo_filename}"
+    users_collection.update_one(
+        {"id": user_id}, 
+        {"$set": {"profile_photo": photo_url, "updated_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Profile photo uploaded successfully", "photo_url": photo_url}
+
+@app.get("/api/users/{user_id}/profile-photo/{filename}")
+async def get_profile_photo(user_id: str, filename: str):
+    """Get user profile photo"""
+    photo_path = PROFILE_PHOTOS_DIR / filename
+    if not photo_path.exists():
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(str(photo_path))
+
+@app.put("/api/users/{user_id}/password")
+async def update_password(user_id: str, password_update: PasswordUpdate, current_user: User = Depends(get_current_active_user)):
+    """Update user password"""
+    # Users can only update their own password
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this password")
+    
+    user = users_collection.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify current password
+    if not verify_password(password_update.current_password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Update password
+    new_password_hash = get_password_hash(password_update.new_password)
+    users_collection.update_one(
+        {"id": user_id}, 
+        {"$set": {"password_hash": new_password_hash, "updated_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Password updated successfully"}
+
+# Grades and Assessment Results APIs
+@app.get("/api/users/{user_id}/grades")
+async def get_user_grades(user_id: str, current_user: User = Depends(get_current_active_user)):
+    """Get user's assessment results and grades"""
+    # Users can only see their own grades or admin/supervisor can see any
+    if current_user.id != user_id and current_user.role not in ["administrator", "administrator_supervisor", "lecturer"]:
+        raise HTTPException(status_code=403, detail="Not authorized to view these grades")
+    
+    # Get all assessment attempts for the user
+    attempts = list(assessment_attempts_collection.find({"user_id": user_id}, {"_id": 0}))
+    
+    # Enrich with assessment details
+    grades = []
+    for attempt in attempts:
+        assessment = assessments_collection.find_one({"id": attempt["assessment_id"]}, {"_id": 0})
+        if assessment:
+            grade_record = {
+                "assessment_id": attempt["assessment_id"],
+                "assessment_title": assessment["title"],
+                "total_points": attempt["total_points"],
+                "earned_points": attempt["earned_points"],
+                "percentage": attempt["percentage"],
+                "is_passed": attempt["is_passed"],
+                "submitted_at": attempt["submitted_at"],
+                "attempt_id": attempt["id"]
+            }
+            grades.append(grade_record)
+    
+    return {"user_id": user_id, "grades": grades}
+
+# Course Assignment APIs
+@app.post("/api/programs/{program_id}/assign-users")
+async def assign_users_to_program(program_id: str, user_ids: List[str], current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Assign multiple users to a program"""
+    program = programs_collection.find_one({"id": program_id})
+    if not program:
+        raise HTTPException(status_code=404, detail="Program not found")
+    
+    results = []
+    for user_id in user_ids:
+        # Check if user exists
+        user = users_collection.find_one({"id": user_id})
+        if not user:
+            results.append({"user_id": user_id, "status": "failed", "message": "User not found"})
+            continue
+        
+        # Check if already enrolled
+        existing_enrollment = enrollments_collection.find_one({"user_id": user_id, "program_id": program_id})
+        if existing_enrollment:
+            results.append({"user_id": user_id, "status": "skipped", "message": "Already enrolled"})
+            continue
+        
+        # Create enrollment
+        enrollment_id = generate_id()
+        timestamp = get_current_timestamp()
+        
+        enrollment_doc = {
+            "id": enrollment_id,
+            "user_id": user_id,
+            "program_id": program_id,
+            "enrolled_at": timestamp,
+            "completed_at": None,
+            "status": "active",
+            "assigned_by": current_user.id
+        }
+        
+        enrollments_collection.insert_one(enrollment_doc)
+        results.append({"user_id": user_id, "status": "success", "message": "Enrolled successfully"})
+    
+    return {"program_id": program_id, "results": results}
+
+@app.delete("/api/programs/{program_id}/users/{user_id}")
+async def remove_user_from_program(program_id: str, user_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
+    """Remove a user from a program"""
+    result = enrollments_collection.delete_one({"user_id": user_id, "program_id": program_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+    
+    return {"message": "User removed from program successfully"}
 
 # Programs endpoints (updated with authentication)
 @app.post("/api/programs", response_model=Program)
