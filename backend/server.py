@@ -960,7 +960,7 @@ async def get_program(program_id: str, current_user: User = Depends(get_current_
     return Program(**program)
 
 @app.put("/api/programs/{program_id}", response_model=Program)
-async def update_program(program_id: str, program: ProgramCreate, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def update_program(program_id: str, program: ProgramCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     timestamp = get_current_timestamp()
     
     update_doc = {
