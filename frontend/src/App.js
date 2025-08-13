@@ -478,6 +478,79 @@ function MainApp() {
     }
   };
 
+  const fetchCertificates = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/certificates`);
+      setCertificates(response.data);
+    } catch (err) {
+      setError('Failed to fetch certificates');
+    }
+  };
+
+  const fetchContentProgress = async (contentId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/content/${contentId}/progress`);
+      setContentProgress(prev => ({
+        ...prev,
+        [contentId]: response.data
+      }));
+    } catch (err) {
+      console.log('Failed to fetch content progress');
+    }
+  };
+
+  const updateContentProgress = async (contentId, progressData) => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/content/${contentId}/progress`, progressData);
+      fetchContentProgress(contentId);
+    } catch (err) {
+      console.log('Failed to update content progress');
+    }
+  };
+
+  const fetchProgramProgress = async (programId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/programs/${programId}/progress`);
+      setProgramProgress(response.data);
+    } catch (err) {
+      setError('Failed to fetch program progress');
+    }
+  };
+
+  const verifyCertificate = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${API_BASE_URL}/api/certificates/verify`, {
+        verification_code: verificationCode
+      });
+      setVerificationResult(response.data);
+    } catch (err) {
+      setError('Failed to verify certificate');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadCertificate = async (certificateId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/certificates/${certificateId}/download`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `certificate_${certificateId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Failed to download certificate');
+    }
+  };
+
   const createProgram = async (e) => {
     e.preventDefault();
     try {
