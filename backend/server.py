@@ -1128,6 +1128,119 @@ async def get_program_enrollments(program_id: str, current_user: User = Depends(
     enrollments = list(enrollments_collection.find({"program_id": program_id}, {"_id": 0}))
     return [Enrollment(**enrollment) for enrollment in enrollments]
 
+# Certificate Management endpoints
+@app.get("/api/certificates", response_model=List[Certificate])
+async def get_certificates(current_user: User = Depends(get_current_active_user)):
+    # Users can only see their own certificates unless they're admin
+    query = {}
+    if current_user.role != "admin":
+        query["user_id"] = current_user.id
+    
+    certificates = list(certificates_collection.find(query, {"_id": 0}))
+    return [Certificate(**cert) for cert in certificates]
+
+@app.get("/api/certificates/{certificate_id}", response_model=Certificate)
+async def get_certificate(certificate_id: str, current_user: User = Depends(get_current_active_user)):
+    certificate = certificates_collection.find_one({"id": certificate_id}, {"_id": 0})
+    if not certificate:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    
+    # Users can only access their own certificates unless they're admin
+    if current_user.role != "admin" and certificate["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this certificate")
+    
+    return Certificate(**certificate)
+
+@app.get("/api/certificates/{certificate_id}/download")
+async def download_certificate(certificate_id: str, current_user: User = Depends(get_current_active_user)):
+    certificate = certificates_collection.find_one({"id": certificate_id}, {"_id": 0})
+    if not certificate:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    
+    # Users can only download their own certificates unless they're admin
+    if current_user.role != "admin" and certificate["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to download this certificate")
+    
+    if not certificate.get("certificate_file_path") or not Path(certificate["certificate_file_path"]).exists():
+        raise HTTPException(status_code=404, detail="Certificate file not found")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        path=certificate["certificate_file_path"],
+        filename=f"certificate_{certificate['certificate_number']}.pdf",
+        media_type="application/pdf"
+    )
+
+@app.post("/api/certificates/verify")
+async def verify_certificate(verification: CertificateVerification):
+    certificate = certificates_collection.find_one({"verification_code": verification.verification_code}, {"_id": 0})
+    
+    if not certificate:
+        return {"valid": False, "message": "Certificate not found"}
+    
+    if not certificate.get("is_valid"):
+        return {"valid": False, "message": "Certificate has been revoked"}
+    
+    # Check expiry
+    if certificate.get("expiry_date"):
+        expiry = datetime.fromisoformat(certificate["expiry_date"].replace('Z', '+00:00'))
+        if datetime.utcnow() > expiry:
+            return {"valid": False, "message": "Certificate has expired"}
+    
+    return {
+        "valid": True,
+        "certificate": Certificate(**certificate),
+        "message": "Certificate is valid"
+    }
+
+@app.post("/api/programs/{program_id}/generate-certificate")
+async def manual_generate_certificate(program_id: str, user_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+    """Manually generate certificate for a user (admin/instructor only)"""
+    
+    # Find user's enrollment
+    enrollment = enrollments_collection.find_one({
+        "user_id": user_id,
+        "program_id": program_id
+    })
+    
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="User is not enrolled in this program")
+    
+    # Check if user has completed the program
+    if not check_program_completion(user_id, program_id):
+        raise HTTPException(status_code=400, detail="User has not completed all program requirements")
+    
+    # Generate certificate
+    certificate_id = auto_generate_certificate(user_id, program_id, enrollment["id"])
+    
+    if not certificate_id:
+        raise HTTPException(status_code=500, detail="Failed to generate certificate")
+    
+    certificate = certificates_collection.find_one({"id": certificate_id}, {"_id": 0})
+    return Certificate(**certificate)
+
+@app.delete("/api/certificates/{certificate_id}")
+async def revoke_certificate(certificate_id: str, current_user: User = Depends(require_role(["admin"]))):
+    """Revoke a certificate (admin only)"""
+    result = certificates_collection.update_one(
+        {"id": certificate_id},
+        {"$set": {"is_valid": False}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    
+    return {"message": "Certificate revoked successfully"}
+
+@app.get("/api/users/{user_id}/certificates", response_model=List[Certificate])
+async def get_user_certificates(user_id: str, current_user: User = Depends(get_current_active_user)):
+    # Users can only see their own certificates unless they're admin
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view these certificates")
+    
+    certificates = list(certificates_collection.find({"user_id": user_id}, {"_id": 0}))
+    return [Certificate(**cert) for cert in certificates]
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
