@@ -1533,7 +1533,7 @@ async def verify_certificate(verification: CertificateVerification):
     }
 
 @app.post("/api/programs/{program_id}/generate-certificate")
-async def manual_generate_certificate(program_id: str, user_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def manual_generate_certificate(program_id: str, user_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     """Manually generate certificate for a user (admin/instructor only)"""
     
     # Find user's enrollment
