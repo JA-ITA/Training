@@ -1232,14 +1232,140 @@ async def revoke_certificate(certificate_id: str, current_user: User = Depends(r
     
     return {"message": "Certificate revoked successfully"}
 
-@app.get("/api/users/{user_id}/certificates", response_model=List[Certificate])
-async def get_user_certificates(user_id: str, current_user: User = Depends(get_current_active_user)):
-    # Users can only see their own certificates unless they're admin
-    if current_user.role != "admin" and current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to view these certificates")
+@app.get("/api/content/{content_id}/stream")
+async def stream_content(content_id: str, current_user: User = Depends(get_current_active_user)):
+    """Stream content for video/audio playback"""
+    content = content_collection.find_one({"id": content_id})
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
     
-    certificates = list(certificates_collection.find({"user_id": user_id}, {"_id": 0}))
-    return [Certificate(**cert) for cert in certificates]
+    file_path = Path(content["file_path"])
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Content file not found")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        path=str(file_path),
+        media_type=content["mime_type"],
+        filename=content["title"]
+    )
+
+@app.post("/api/content/{content_id}/progress")
+async def update_content_progress(
+    content_id: str, 
+    progress_data: dict,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update user's progress on specific content"""
+    content = content_collection.find_one({"id": content_id})
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+    
+    # Update or create progress record
+    progress_id = generate_id()
+    timestamp = get_current_timestamp()
+    
+    progress_doc = {
+        "id": progress_id,
+        "user_id": current_user.id,
+        "content_id": content_id,
+        "unit_id": content["unit_id"],
+        "progress_percentage": progress_data.get("progress_percentage", 0),
+        "time_spent": progress_data.get("time_spent", 0),  # in seconds
+        "completed": progress_data.get("completed", False),
+        "last_position": progress_data.get("last_position", 0),  # for video/audio
+        "updated_at": timestamp
+    }
+    
+    # Upsert progress
+    progress_collection.update_one(
+        {"user_id": current_user.id, "content_id": content_id},
+        {"$set": progress_doc},
+        upsert=True
+    )
+    
+    return {"message": "Progress updated successfully"}
+
+@app.get("/api/content/{content_id}/progress")
+async def get_content_progress(content_id: str, current_user: User = Depends(get_current_active_user)):
+    """Get user's progress on specific content"""
+    progress = progress_collection.find_one({
+        "user_id": current_user.id,
+        "content_id": content_id
+    }, {"_id": 0})
+    
+    if not progress:
+        return {
+            "progress_percentage": 0,
+            "time_spent": 0,
+            "completed": False,
+            "last_position": 0
+        }
+    
+    return progress
+
+@app.get("/api/users/{user_id}/progress")
+async def get_user_progress(user_id: str, current_user: User = Depends(get_current_active_user)):
+    """Get user's overall progress across all content"""
+    # Users can only see their own progress unless they're admin
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this progress")
+    
+    progress_records = list(progress_collection.find({"user_id": user_id}, {"_id": 0}))
+    return progress_records
+
+@app.get("/api/programs/{program_id}/progress")
+async def get_program_progress(program_id: str, current_user: User = Depends(get_current_active_user)):
+    """Get user's progress in a specific program"""
+    # Get all modules and units in the program
+    modules = list(modules_collection.find({"program_id": program_id}, {"_id": 0}))
+    
+    program_progress = {
+        "program_id": program_id,
+        "modules": []
+    }
+    
+    for module in modules:
+        units = list(units_collection.find({"module_id": module["id"]}, {"_id": 0}))
+        module_progress = {
+            "module_id": module["id"],
+            "module_title": module["title"],
+            "units": []
+        }
+        
+        for unit in units:
+            # Get content for this unit
+            content_items = list(content_collection.find({"unit_id": unit["id"]}, {"_id": 0}))
+            
+            unit_progress = {
+                "unit_id": unit["id"],
+                "unit_title": unit["title"],
+                "content_items": []
+            }
+            
+            for content in content_items:
+                # Get user's progress for this content
+                progress = progress_collection.find_one({
+                    "user_id": current_user.id,
+                    "content_id": content["id"]
+                }, {"_id": 0})
+                
+                content_progress = {
+                    "content_id": content["id"],
+                    "content_title": content["title"],
+                    "content_type": content["content_type"],
+                    "progress_percentage": progress.get("progress_percentage", 0) if progress else 0,
+                    "completed": progress.get("completed", False) if progress else False,
+                    "time_spent": progress.get("time_spent", 0) if progress else 0
+                }
+                
+                unit_progress["content_items"].append(content_progress)
+            
+            module_progress["units"].append(unit_progress)
+        
+        program_progress["modules"].append(module_progress)
+    
+    return program_progress
 
 if __name__ == "__main__":
     import uvicorn
