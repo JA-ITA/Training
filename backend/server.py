@@ -615,6 +615,15 @@ async def login_user(user_credentials: UserLogin):
     if not user["is_active"]:
         raise HTTPException(status_code=400, detail="Inactive user")
     
+    # Check user status
+    user_status = user.get("status", "approved")
+    if user_status == "pending":
+        raise HTTPException(status_code=403, detail="Account pending approval. Please contact an administrator.")
+    elif user_status == "suspended":
+        raise HTTPException(status_code=403, detail="Account suspended. Please contact an administrator.")
+    elif user_status == "deleted":
+        raise HTTPException(status_code=403, detail="Account not found.")
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user["username"]}, expires_delta=access_token_expires
