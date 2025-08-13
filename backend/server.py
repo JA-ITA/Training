@@ -1183,7 +1183,7 @@ async def get_program_structure(program_id: str, current_user: User = Depends(ge
 
 # Question Bank endpoints
 @app.post("/api/questions", response_model=Question)
-async def create_question(question: QuestionCreate, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def create_question(question: QuestionCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     question_id = generate_id()
     timestamp = get_current_timestamp()
     
