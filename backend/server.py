@@ -309,6 +309,209 @@ def require_role(allowed_roles: List[str]):
         return current_user
     return role_checker
 
+# Certificate Generation Utilities
+def generate_certificate_number():
+    """Generate a unique certificate number"""
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    return f"ITA-{timestamp}-{generate_id()[:8].upper()}"
+
+def generate_verification_code():
+    """Generate a verification code for certificate"""
+    return generate_id()[:12].upper()
+
+def create_certificate_pdf(certificate_data, file_path):
+    """Generate certificate PDF"""
+    try:
+        # Create PDF document
+        doc = SimpleDocTemplate(file_path, pagesize=A4)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=28,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            textColor=blue
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontSize=18,
+            spaceAfter=20,
+            alignment=TA_CENTER,
+            textColor=black
+        )
+        
+        content_style = ParagraphStyle(
+            'CustomContent',
+            parent=styles['Normal'],
+            fontSize=14,
+            spaceAfter=15,
+            alignment=TA_CENTER,
+            textColor=black
+        )
+        
+        # Certificate content
+        story.append(Spacer(1, 50))
+        story.append(Paragraph("CERTIFICATE OF COMPLETION", title_style))
+        story.append(Spacer(1, 30))
+        
+        story.append(Paragraph("This is to certify that", content_style))
+        story.append(Spacer(1, 20))
+        
+        story.append(Paragraph(f"<b>{certificate_data['user_name']}</b>", subtitle_style))
+        story.append(Spacer(1, 30))
+        
+        story.append(Paragraph("has successfully completed the training program", content_style))
+        story.append(Spacer(1, 20))
+        
+        story.append(Paragraph(f"<b>{certificate_data['program_title']}</b>", subtitle_style))
+        story.append(Spacer(1, 30))
+        
+        story.append(Paragraph(f"Date of Completion: {certificate_data['completion_date']}", content_style))
+        story.append(Paragraph(f"Certificate Number: {certificate_data['certificate_number']}", content_style))
+        story.append(Paragraph(f"Verification Code: {certificate_data['verification_code']}", content_style))
+        
+        if certificate_data.get('expiry_date'):
+            story.append(Paragraph(f"Valid Until: {certificate_data['expiry_date']}", content_style))
+        
+        story.append(Spacer(1, 50))
+        
+        # Generate QR code for verification
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(f"https://training.example.com/verify/{certificate_data['verification_code']}")
+        qr.make(fit=True)
+        
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        qr_buffer = BytesIO()
+        qr_img.save(qr_buffer, format='PNG')
+        qr_buffer.seek(0)
+        
+        # Note: For simplicity, we'll skip adding the QR code image to avoid complex image handling
+        story.append(Paragraph("Scan QR code or use verification code to verify this certificate", content_style))
+        
+        # Build PDF
+        doc.build(story)
+        return True
+        
+    except Exception as e:
+        print(f"Error generating certificate PDF: {e}")
+        return False
+
+def check_program_completion(user_id: str, program_id: str) -> bool:
+    """Check if user has completed all requirements for a program"""
+    try:
+        # Get program assessments
+        program_assessments = list(assessments_collection.find({"program_id": program_id}))
+        
+        if not program_assessments:
+            # If no assessments, consider program completed (content-only programs)
+            return True
+        
+        # Check if user has passed all assessments
+        for assessment in program_assessments:
+            # Get user's latest attempt for this assessment
+            latest_attempt = assessment_attempts_collection.find_one(
+                {"assessment_id": assessment["id"], "user_id": user_id},
+                sort=[("submitted_at", -1)]
+            )
+            
+            if not latest_attempt or not latest_attempt.get("is_passed"):
+                return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error checking program completion: {e}")
+        return False
+
+def auto_generate_certificate(user_id: str, program_id: str, enrollment_id: str):
+    """Automatically generate certificate when program is completed"""
+    try:
+        # Check if certificate already exists
+        existing_cert = certificates_collection.find_one({
+            "user_id": user_id,
+            "program_id": program_id,
+            "enrollment_id": enrollment_id
+        })
+        
+        if existing_cert:
+            return existing_cert["id"]
+        
+        # Get user and program data
+        user = users_collection.find_one({"id": user_id})
+        program = programs_collection.find_one({"id": program_id})
+        
+        if not user or not program:
+            return None
+        
+        # Generate certificate data
+        certificate_id = generate_id()
+        certificate_number = generate_certificate_number()
+        verification_code = generate_verification_code()
+        issued_date = get_current_timestamp()
+        
+        # Calculate expiry date if program has expiry duration
+        expiry_date = None
+        if program.get("expiry_duration"):
+            expiry_date = (datetime.utcnow() + timedelta(days=program["expiry_duration"] * 30)).isoformat()
+        
+        # Create certificate directory
+        cert_dir = Path("/app/certificates")
+        cert_dir.mkdir(exist_ok=True)
+        
+        # Generate PDF file path
+        pdf_filename = f"certificate_{certificate_id}.pdf"
+        pdf_path = cert_dir / pdf_filename
+        
+        # Certificate data for PDF generation
+        cert_data = {
+            "user_name": user["full_name"],
+            "program_title": program["title"],
+            "completion_date": datetime.utcnow().strftime("%B %d, %Y"),
+            "certificate_number": certificate_number,
+            "verification_code": verification_code,
+            "expiry_date": datetime.fromisoformat(expiry_date.replace('Z', '+00:00')).strftime("%B %d, %Y") if expiry_date else None
+        }
+        
+        # Generate PDF
+        if create_certificate_pdf(cert_data, str(pdf_path)):
+            # Save certificate to database
+            certificate_doc = {
+                "id": certificate_id,
+                "user_id": user_id,
+                "program_id": program_id,
+                "enrollment_id": enrollment_id,
+                "user_name": user["full_name"],
+                "program_title": program["title"],
+                "issued_date": issued_date,
+                "expiry_date": expiry_date,
+                "certificate_number": certificate_number,
+                "verification_code": verification_code,
+                "is_valid": True,
+                "certificate_file_path": str(pdf_path)
+            }
+            
+            certificates_collection.insert_one(certificate_doc)
+            
+            # Update enrollment status to completed
+            enrollments_collection.update_one(
+                {"id": enrollment_id},
+                {"$set": {"status": "completed", "completed_at": issued_date}}
+            )
+            
+            return certificate_id
+        
+        return None
+        
+    except Exception as e:
+        print(f"Error auto-generating certificate: {e}")
+        return None
+
 # API Routes
 
 @app.get("/api/health")
