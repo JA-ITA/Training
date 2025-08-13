@@ -980,7 +980,7 @@ async def update_program(program_id: str, program: ProgramCreate, current_user: 
     return Program(**updated_program)
 
 @app.delete("/api/programs/{program_id}")
-async def delete_program(program_id: str, current_user: User = Depends(require_role(["admin"]))):
+async def delete_program(program_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor"]))):
     # Delete related modules and units
     modules = list(modules_collection.find({"program_id": program_id}))
     for module in modules:
