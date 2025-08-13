@@ -1463,7 +1463,7 @@ async def get_user_enrollments(user_id: str, current_user: User = Depends(get_cu
     return [Enrollment(**enrollment) for enrollment in enrollments]
 
 @app.get("/api/programs/{program_id}/enrollments", response_model=List[Enrollment])
-async def get_program_enrollments(program_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def get_program_enrollments(program_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     enrollments = list(enrollments_collection.find({"program_id": program_id}, {"_id": 0}))
     return [Enrollment(**enrollment) for enrollment in enrollments]
 
