@@ -1657,8 +1657,239 @@ function MainApp() {
     </div>
   );
 
-  // Certificates Management View
-  const CertificatesView = () => (
+  // Enhanced Programs View with Content Viewing
+  const ProgramsView = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Training Programs</h1>
+          <p className="text-gray-600 mt-2">
+            {user.role === 'learner' ? 'Browse and access your training programs' : 'Create and manage training programs'}
+          </p>
+        </div>
+      </div>
+
+      {/* Program Structure View */}
+      {programStructure && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>{programStructure.program.title}</CardTitle>
+                <CardDescription>{programStructure.program.description}</CardDescription>
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => fetchProgramProgress(programStructure.program.id)}
+              >
+                View Progress
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {programStructure.modules.map((module) => (
+                <div key={module.id} className="border rounded-lg p-4">
+                  <Collapsible 
+                    open={expandedModules.has(module.id)}
+                    onOpenChange={() => toggleModuleExpansion(module.id)}
+                  >
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
+                      <div className="flex items-center space-x-2">
+                        {expandedModules.has(module.id) ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronRight className="h-4 w-4" />
+                        }
+                        <h3 className="font-medium">{module.title}</h3>
+                      </div>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent className="mt-4 space-y-3">
+                      {module.units.map((unit) => (
+                        <div key={unit.id} className="ml-6 p-3 bg-gray-50 rounded-lg">
+                          <h4 className="font-medium text-sm">{unit.title}</h4>
+                          
+                          {/* Unit Content */}
+                          <div className="mt-2 space-y-2">
+                            {/* Fetch and display content for this unit */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const response = await axios.get(`${API_BASE_URL}/api/units/${unit.id}/content`);
+                                  const contentItems = response.data;
+                                  
+                                  // Show content items
+                                  unit.contentItems = contentItems;
+                                  setExpandedModules(new Set(expandedModules)); // Trigger re-render
+                                } catch (err) {
+                                  setError('Failed to load content');
+                                }
+                              }}
+                              className="text-xs"
+                            >
+                              Load Content ({unit.contentItems?.length || 0} items)
+                            </Button>
+                            
+                            {unit.contentItems && unit.contentItems.map((content) => (
+                              <div key={content.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                                <div className="flex items-center space-x-2">
+                                  {getContentIcon(content.content_type)}
+                                  <span className="text-sm">{content.title}</span>
+                                  {contentProgress[content.id]?.completed && (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {contentProgress[content.id] && (
+                                    <div className="text-xs text-gray-500">
+                                      {contentProgress[content.id].progress_percentage}%
+                                    </div>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedContent(content);
+                                      fetchContentProgress(content.id);
+                                    }}
+                                  >
+                                    <Play className="h-4 w-4 mr-1" />
+                                    View
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Programs List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {programs.map((program) => (
+          <Card key={program.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="text-lg">{program.title}</CardTitle>
+              <CardDescription>{program.description.substring(0, 100)}...</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm text-gray-600">
+                    {program.learning_objectives.length} Learning Objectives
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Timer className="h-4 w-4 text-orange-500" />
+                  <span className="text-sm text-gray-600">
+                    Valid for {program.expiry_duration} months
+                  </span>
+                </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedProgram(program);
+                      fetchProgramStructure(program.id);
+                    }}
+                    className="flex-1"
+                  >
+                    View Program
+                  </Button>
+                  {user.role === 'learner' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fetchProgramProgress(program.id)}
+                    >
+                      Progress
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        
+        {programs.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <BookOpen className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500">No programs available yet</p>
+          </div>
+        )}
+      </div>
+
+      {/* Content Viewer Modal */}
+      {selectedContent && (
+        <ContentViewer 
+          content={selectedContent}
+          onClose={() => setSelectedContent(null)}
+        />
+      )}
+
+      {/* Program Progress Modal */}
+      {programProgress && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-4xl mx-4 max-h-[80vh] overflow-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Program Progress</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setProgramProgress(null)}>
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {programProgress.modules.map((module) => (
+                  <div key={module.module_id} className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">{module.module_title}</h4>
+                    <div className="space-y-2">
+                      {module.units.map((unit) => (
+                        <div key={unit.unit_id} className="bg-gray-50 rounded p-3">
+                          <h5 className="text-sm font-medium mb-2">{unit.unit_title}</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {unit.content_items.map((content) => (
+                              <div key={content.content_id} className="flex items-center justify-between p-2 bg-white rounded border text-sm">
+                                <div className="flex items-center gap-2">
+                                  {getContentIcon(content.content_type)}
+                                  <span>{content.content_title}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {content.completed ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <div className="text-xs text-gray-500">
+                                      {content.progress_percentage}%
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
