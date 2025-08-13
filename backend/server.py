@@ -1023,7 +1023,7 @@ async def get_program_modules(program_id: str, current_user: User = Depends(get_
     return [Module(**module) for module in modules]
 
 @app.put("/api/modules/{module_id}", response_model=Module)
-async def update_module(module_id: str, module_data: dict, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def update_module(module_id: str, module_data: dict, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     timestamp = get_current_timestamp()
     update_doc = {**module_data, "updated_at": timestamp}
     
