@@ -995,7 +995,7 @@ async def delete_program(program_id: str, current_user: User = Depends(require_r
 
 # Modules endpoints (keep existing functionality)
 @app.post("/api/modules", response_model=Module)
-async def create_module(module: ModuleCreate, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def create_module(module: ModuleCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     # Verify program exists
     program = programs_collection.find_one({"id": module.program_id})
     if not program:
