@@ -1003,7 +1003,26 @@ def main():
         tester.test_get_module_units,
         tester.test_upload_content,
         tester.test_get_unit_content,
-        tester.test_program_structure
+        tester.test_program_structure,
+        
+        # Enrollment tests
+        tester.test_create_enrollment,
+        tester.test_get_enrollments,
+        tester.test_get_user_enrollments,
+        tester.test_get_program_enrollments,
+        
+        # Certificate tests
+        tester.test_get_certificates,
+        tester.test_certificate_verification,
+        tester.test_manual_certificate_generation,
+        
+        # Progress tracking tests
+        tester.test_program_progress,
+        
+        # Role-based access control tests
+        tester.test_learner_cannot_create_program,
+        tester.test_learner_cannot_create_questions,
+        tester.test_unauthenticated_access_denied
     ]
     
     print(f"\n📋 Running {len(tests)} comprehensive tests...")
