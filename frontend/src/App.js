@@ -1890,13 +1890,9 @@ function MainApp() {
       )}
     </div>
   );
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Certificates</h1>
-          <p className="text-gray-600 mt-2">View and download your earned certificates</p>
-        </div>
-      </div>
+
+  // Certificates Management View
+  const CertificatesView = () => (
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
