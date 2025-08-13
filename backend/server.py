@@ -1218,7 +1218,7 @@ async def get_questions(current_user: User = Depends(require_role(["administrato
     return [Question(**question) for question in questions]
 
 @app.get("/api/questions/{question_id}", response_model=Question)
-async def get_question(question_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def get_question(question_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     question = questions_collection.find_one({"id": question_id}, {"_id": 0})
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
