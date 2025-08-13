@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
-import { Plus, FileText, Video, Image, Music, Trash2, Edit, ChevronDown, ChevronRight, Upload, GraduationCap, Users, Award, BarChart3, Settings, LogOut, BookOpen, ClipboardList, UserPlus, CheckCircle, Timer, Target, Eye, Play } from 'lucide-react';
+import { Plus, FileText, Video, Image, Music, Trash2, Edit, ChevronDown, ChevronRight, Upload, GraduationCap, Users, Award, BarChart3, Settings, LogOut, BookOpen, ClipboardList, UserPlus, CheckCircle, Timer, Target, Eye, Play, Download, Certificate, Shield, PlayCircle, Pause, Volume2, Maximize, Minimize } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Input } from './components/ui/input';
