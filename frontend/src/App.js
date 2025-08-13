@@ -2103,6 +2103,221 @@ function MainApp() {
     </div>
   );
 
+  // Certificates Management View
+  const CertificatesView = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Certificates</h1>
+          <p className="text-gray-600 mt-2">View and download your earned certificates</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>My Certificates ({certificates.length})</CardTitle>
+            <CardDescription>Certificates you have earned</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {certificates.map((certificate) => (
+                <div key={certificate.id} className="p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Award className="h-5 w-5 text-yellow-500" />
+                        <h4 className="font-medium">{certificate.program_title}</h4>
+                      </div>
+                      <p className="text-sm text-gray-600">Issued to: {certificate.user_name}</p>
+                      <p className="text-sm text-gray-600">Date: {new Date(certificate.issued_date).toLocaleDateString()}</p>
+                      <div className="flex gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          #{certificate.certificate_number}
+                        </Badge>
+                        {certificate.is_valid ? (
+                          <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Valid
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="text-xs">
+                            Revoked
+                          </Badge>
+                        )}
+                        {certificate.expiry_date && (
+                          <Badge variant="outline" className="text-xs">
+                            Expires: {new Date(certificate.expiry_date).toLocaleDateString()}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm"
+                        onClick={() => downloadCertificate(certificate.id)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setSelectedCertificate(certificate)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {certificates.length === 0 && (
+                <div className="text-center py-8">
+                  <Award className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">No certificates earned yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Complete training programs to earn certificates</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Certificate Verification</CardTitle>
+            <CardDescription>Verify the authenticity of a certificate</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="verification_code">Verification Code</Label>
+                <Input
+                  id="verification_code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter verification code"
+                />
+              </div>
+              
+              <Button 
+                onClick={verifyCertificate}
+                disabled={loading || !verificationCode}
+                className="w-full"
+              >
+                {loading ? 'Verifying...' : 'Verify Certificate'}
+              </Button>
+
+              {verificationResult && (
+                <div className={`p-4 rounded-lg border ${
+                  verificationResult.valid 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {verificationResult.valid ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center">
+                        <span className="text-red-600 text-xs font-bold">×</span>
+                      </div>
+                    )}
+                    <span className={`font-medium ${
+                      verificationResult.valid ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {verificationResult.valid ? 'Certificate Valid' : 'Certificate Invalid'}
+                    </span>
+                  </div>
+                  <p className={`text-sm ${
+                    verificationResult.valid ? 'text-green-700' : 'text-red-700'
+                  }`}>
+                    {verificationResult.message}
+                  </p>
+                  
+                  {verificationResult.valid && verificationResult.certificate && (
+                    <div className="mt-4 p-3 bg-white rounded border">
+                      <h5 className="font-medium">{verificationResult.certificate.program_title}</h5>
+                      <p className="text-sm text-gray-600">Issued to: {verificationResult.certificate.user_name}</p>
+                      <p className="text-sm text-gray-600">Date: {new Date(verificationResult.certificate.issued_date).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600">Certificate #: {verificationResult.certificate.certificate_number}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Certificate Detail Modal */}
+      {selectedCertificate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-2xl mx-4">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Certificate Details</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedCertificate(null)}>
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                  <Award className="h-16 w-16 mx-auto text-yellow-500 mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Certificate of Completion</h3>
+                  <p className="text-lg text-gray-700">This certifies that</p>
+                  <p className="text-2xl font-bold text-blue-600 my-4">{selectedCertificate.user_name}</p>
+                  <p className="text-lg text-gray-700">has successfully completed</p>
+                  <p className="text-xl font-semibold text-gray-900 mt-2">{selectedCertificate.program_title}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-600">Certificate Number:</span>
+                    <p className="text-gray-900">{selectedCertificate.certificate_number}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Issued Date:</span>
+                    <p className="text-gray-900">{new Date(selectedCertificate.issued_date).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Verification Code:</span>
+                    <p className="text-gray-900 font-mono">{selectedCertificate.verification_code}</p>
+                  </div>
+                  {selectedCertificate.expiry_date && (
+                    <div>
+                      <span className="font-medium text-gray-600">Valid Until:</span>
+                      <p className="text-gray-900">{new Date(selectedCertificate.expiry_date).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    onClick={() => downloadCertificate(selectedCertificate.id)}
+                    className="flex-1"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedCertificate.verification_code);
+                      setSuccess('Verification code copied to clipboard');
+                    }}
+                  >
+                    Copy Verification Code
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
