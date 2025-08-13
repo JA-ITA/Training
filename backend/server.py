@@ -1047,7 +1047,7 @@ async def delete_module(module_id: str, current_user: User = Depends(require_rol
 
 # Units endpoints (keep existing functionality)
 @app.post("/api/units", response_model=Unit)
-async def create_unit(unit: UnitCreate, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def create_unit(unit: UnitCreate, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     # Verify module exists
     module = modules_collection.find_one({"id": unit.module_id})
     if not module:
