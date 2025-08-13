@@ -78,7 +78,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: str
-    role: str = "learner"  # admin, instructor, learner
+    role: str = "learner"  # Will be requested role, needs admin approval
 
 class UserLogin(BaseModel):
     username: str
@@ -90,9 +90,37 @@ class User(BaseModel):
     email: str
     full_name: str
     role: str
+    requested_role: Optional[str] = None
+    status: str = "pending"  # pending, approved, suspended, deleted
     is_active: bool = True
+    profile_photo: Optional[str] = None
     created_at: str
     updated_at: str
+    approved_by: Optional[str] = None
+    approved_at: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+
+class AdminUserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+    full_name: str
+    role: str
+    status: str = "approved"
+
+class UserApproval(BaseModel):
+    user_id: str
+    approved_role: str
+    status: str
 
 class Token(BaseModel):
     access_token: str
