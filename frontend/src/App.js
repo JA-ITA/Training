@@ -369,6 +369,17 @@ function MainApp() {
   const [answers, setAnswers] = useState({});
   const [assessmentResults, setAssessmentResults] = useState(null);
 
+  // Certificate states
+  const [certificates, setCertificates] = useState([]);
+  const [selectedCertificate, setSelectedCertificate] = useState(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationResult, setVerificationResult] = useState(null);
+
+  // Content viewing states
+  const [selectedContent, setSelectedContent] = useState(null);
+  const [contentProgress, setContentProgress] = useState({});
+  const [programProgress, setProgramProgress] = useState(null);
+
   // Form states
   const [programForm, setProgramForm] = useState({
     title: '',
