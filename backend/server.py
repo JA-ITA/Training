@@ -1148,7 +1148,7 @@ async def get_unit_content(unit_id: str, current_user: User = Depends(get_curren
     return [ContentItem(**item) for item in content_items]
 
 @app.delete("/api/content/{content_id}")
-async def delete_content(content_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def delete_content(content_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     content = content_collection.find_one({"id": content_id})
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
