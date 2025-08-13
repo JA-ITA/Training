@@ -1255,7 +1255,7 @@ async def update_question(question_id: str, question: QuestionCreate, current_us
     return Question(**updated_question)
 
 @app.delete("/api/questions/{question_id}")
-async def delete_question(question_id: str, current_user: User = Depends(require_role(["admin", "instructor"]))):
+async def delete_question(question_id: str, current_user: User = Depends(require_role(["administrator", "administrator_supervisor", "lecturer"]))):
     result = questions_collection.delete_one({"id": question_id})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Question not found")
